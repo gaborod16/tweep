@@ -13,6 +13,8 @@ import requests
 import sys
 import threading
 
+MAX_INT = sys.maxint
+
 q = Queue.Queue()
 
 class tweep:
@@ -20,9 +22,11 @@ class tweep:
         self.min = -1
         self.author = arg.u
         self.search = arg.s
+        self.limit_feeds = int(arg.n) if arg.n else MAX_INT
         self.year = arg.year
         self.feed = [-1]
         self.tweets = 0
+        self.feeds = 0
         self.tweet_urls = []
         self.pic_count = 0
 
@@ -49,8 +53,11 @@ class tweep:
         return url
 
     def get_feed(self):
-        r = requests.get(self.get_url(),headers=agent)
+        url = self.get_url()
+        print("URL:" + url)
+        r = requests.get(url,headers=agent)
         self.feed = []
+        self.feeds += 1
         try:
             if self.min == -1:
                 html = r.text
@@ -83,6 +90,7 @@ class tweep:
             username = tweet.find('span','username').text.encode('utf8').replace('@','')
             timezone = strftime("%Z", gmtime())
             text = tweet.find('p','tweet-text').text.encode('utf8').replace('\n',' ')
+
             if arg.pics:
                 tweet_url = "https://twitter.com/{0}/status/{1}/photo/1".format(username,tweetid)
                 self.tweet_urls.append(tweet_url)
@@ -125,7 +133,8 @@ class tweep:
     def main(self):
         if arg.pics:
             print("[+] Searching Tweets For Photos.")
-        while True if (self.tweets < float('inf')) and len(self.feed)>0 else False:
+        while (self.feeds < self.limit_feeds and self.tweets < MAX_INT and len(self.feed) > 0):
+            print("Getting new feed...")
             self.get_tweets()
         if arg.pics:
             total = len(self.tweet_urls) - 1
@@ -156,6 +165,7 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser(prog='tweep.py',usage='python %(prog)s [options]',description="tweep.py - An Advanced Twitter Scraping Tool")
     ap.add_argument('-u',help="User's tweets you want to scrape.")
     ap.add_argument('-s',help='Search for tweets containing this word or phrase.')
+    ap.add_argument('-n',help='Limit the number of feeds returned by "n".')
     ap.add_argument('--year',help='Filter tweets before specified year.')
     ap.add_argument('--pics',help='Save pictures.',action='store_true')
     ap.add_argument('--fruit',help='Display "low-hanging-fruit" tweets.',action='store_true')
